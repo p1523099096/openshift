@@ -1,7 +1,38 @@
-[root@docker docker_demo]# cat Dockerfile # base imageFROM centos
-# MAINTAINERMAINTAINER json_hc@163.com
-# put nginx-1.12.2.tar.gz into /usr/local/src and unpack nginxADD nginx-1.12.2.tar.gz /usr/local/src
-# running required commandRUN yum install -y gcc gcc-c++ glibc make autoconf openssl openssl-devel RUN yum install -y libxslt-devel -y gd gd-devel GeoIP GeoIP-devel pcre pcre-develRUN useradd -M -s /sbin/nologin nginx
-# change dir to /usr/local/src/nginx-1.12.2WORKDIR /usr/local/src/nginx-1.12.2
-# execute command to compile nginxRUN ./configure --user=nginx --group=nginx --prefix=/usr/local/nginx --with-file-aio  --with-http_ssl_module  --with-http_realip_module    --with-http_addition_module    --with-http_xslt_module   --with-http_image_filter_module    --with-http_geoip_module  --with-http_sub_module  --with-http_dav_module --with-http_flv_module    --with-http_mp4_module --with-http_gunzip_module  --with-http_gzip_static_module  --with-http_auth_request_module  --with-http_random_index_module   --with-http_secure_link_module   --with-http_degradation_module   --with-http_stub_status_module && make && make install
-EXPOSE 80
+# Pull base image  
+FROM ubuntu:13.10  
+  
+MAINTAINER zing wang "zing.jian.wang@gmail.com"  
+  
+# update source  
+RUN echo "deb http://archive.ubuntu.com/ubuntu precise main universe"> /etc/apt/sources.list  
+RUN apt-get update  
+  
+# Install curl  
+RUN apt-get -y install curl  
+  
+# Install JDK 7  
+RUN cd /tmp &&  curl -L 'http://download.oracle.com/otn-pub/java/jdk/7u65-b17/jdk-7u65-linux-x64.tar.gz' -H 'Cookie: oraclelicense=accept-securebackup-cookie; gpw_e24=Dockerfile' | tar -xz  
+RUN mkdir -p /usr/lib/jvm  
+RUN mv /tmp/jdk1.7.0_65/ /usr/lib/jvm/java-7-oracle/  
+  
+# Set Oracle JDK 7 as default Java  
+RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-7-oracle/bin/java 300     
+RUN update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-7-oracle/bin/javac 300     
+  
+ENV JAVA_HOME /usr/lib/jvm/java-7-oracle/  
+  
+# Install tomcat7  
+RUN cd /tmp && curl -L 'http://archive.apache.org/dist/tomcat/tomcat-7/v7.0.8/bin/apache-tomcat-7.0.8.tar.gz' | tar -xz  
+RUN mv /tmp/apache-tomcat-7.0.8/ /opt/tomcat7/  
+  
+ENV CATALINA_HOME /opt/tomcat7  
+ENV PATH $PATH:$CATALINA_HOME/bin  
+  
+ADD tomcat7.sh /etc/init.d/tomcat7  
+RUN chmod 755 /etc/init.d/tomcat7  
+  
+# Expose ports.  
+EXPOSE 8080  
+  
+# Define default command.  
+ENTRYPOINT service tomcat7 start && tail -f /opt/tomcat7/logs/catalina.out 
