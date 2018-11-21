@@ -1,38 +1,37 @@
-# Pull base image  
-FROM ubuntu:13.10  
-  
-MAINTAINER zing wang "zing.jian.wang@gmail.com"  
-  
-# update source  
-RUN echo "deb http://archive.ubuntu.com/ubuntu precise main universe"> /etc/apt/sources.list  
-RUN apt-get update  
-  
-# Install curl  
-RUN apt-get -y install curl  
-  
-# Install JDK 7  
-RUN cd /tmp &&  curl -L 'http://download.oracle.com/otn-pub/java/jdk/7u65-b17/jdk-7u65-linux-x64.tar.gz' -H 'Cookie: oraclelicense=accept-securebackup-cookie; gpw_e24=Dockerfile' | tar -xz  
-RUN mkdir -p /usr/lib/jvm  
-RUN mv /tmp/jdk1.7.0_65/ /usr/lib/jvm/java-7-oracle/  
-  
-# Set Oracle JDK 7 as default Java  
-RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-7-oracle/bin/java 300     
-RUN update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-7-oracle/bin/javac 300     
-  
-ENV JAVA_HOME /usr/lib/jvm/java-7-oracle/  
-  
-# Install tomcat7  
-RUN cd /tmp && curl -L 'http://archive.apache.org/dist/tomcat/tomcat-7/v7.0.8/bin/apache-tomcat-7.0.8.tar.gz' | tar -xz  
-RUN mv /tmp/apache-tomcat-7.0.8/ /opt/tomcat7/  
-  
-ENV CATALINA_HOME /opt/tomcat7  
-ENV PATH $PATH:$CATALINA_HOME/bin  
-  
-ADD tomcat7.sh /etc/init.d/tomcat7  
-RUN chmod 755 /etc/init.d/tomcat7  
-  
-# Expose ports.  
-EXPOSE 8080  
-  
-# Define default command.  
-ENTRYPOINT service tomcat7 start && tail -f /opt/tomcat7/logs/catalina.out 
+# 基于centos6基础镜像
+FROM centos:6
+MAINTAINER p1523099096 "1523099096@qq.com"
+
+# 设置当前工具目录
+# 该命令不会新增镜像层
+WORKDIR /home
+
+# 安装必要的工具
+RUN yum install -y wget && \
+    rpm --rebuilddb && \
+    yum install -y tar && \
+    wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u172-b11/a58eab1ec242421181065cdc37240b08/jdk-8u172-linux-x64.tar.gz && \
+    tar -xvzf jdk-8u172-linux-x64.tar.gz && \
+    wget http://mirrors.shu.edu.cn/apache/tomcat/tomcat-8/v8.5.31/bin/apache-tomcat-8.5.31.tar.gz && \
+    tar -xvzf apache-tomcat-8.5.31.tar.gz && \ 
+    mv apache-tomcat-8.5.31/ tomcat && \
+    rm -f jdk-8u172-linux-x64.tar.gz && \
+    rm -f apache-tomcat-8.5.31.tar.gz && \    
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    yum clean all
+
+# 设置环境变量
+ENV JAVA_HOME /home/jdk1.8.0_172
+ENV CATALINA_HOME /home/tomcat
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/bin
+ENV TZ Asia/Shanghai
+ENV LANG en_US.utf8
+
+# 暴露tomcat 8080端口
+EXPOSE 8080
+
+# 启动容器执行下面的命令
+ENTRYPOINT /home/tomcat/bin/startup.sh && tail -f /home/tomcat/logs/catalina.out
+
+# 创建容器启动tomcat，由于ENTRYPOINT优先级比CMD高，所以这里的CMD不会执行
+CMD ["/home/tomcat/bin/startup.sh"]
